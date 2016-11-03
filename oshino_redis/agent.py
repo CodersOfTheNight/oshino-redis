@@ -47,7 +47,7 @@ class RedisAgent(Agent):
             logger.debug("Section: {0}, data: {1}".format(name, section))
             self.handle_dict(section,
                              "{prefix}{section}".format(prefix=self.prefix,
-                                                        section=section),
+                                                        section=name),
                              event_fn,
                              logger)
 
