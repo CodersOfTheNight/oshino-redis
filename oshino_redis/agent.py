@@ -46,7 +46,7 @@ class RedisAgent(Agent):
         hits = int(data["keyspace_hits"][1])
         misses = int(data["keyspace_misses"][1])
         hit_rate = (hits / (hits + misses)) if hits > 0 else 0
-        data["hit_rate"] = ("computed", hit_rate)
+        data["hit_rate"] = ("redis.computed.hit_rate", hit_rate)
 
         for key, (service, stat) in data.items():
 
