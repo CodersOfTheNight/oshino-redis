@@ -32,7 +32,7 @@ class RedisAgent(Agent):
             if not isinstance(stat, dict):
                 yield key, service, stat
             else:
-                self.handle_dict(stat, service)
+                yield from self.handle_dict(stat, service)
 
     async def process(self, event_fn):
         logger = self.get_logger()
@@ -40,23 +40,26 @@ class RedisAgent(Agent):
         if self.password is not None:
             await redis.auth(self.password)
         info = await redis.info()
-        for name, section in info.items():
-            logger.debug("Section: {0}, data: {1}".format(name, section))
-            prefix = "{prefix}{section}".format(prefix=self.prefix,
-                                                section=name)
-            for key, service, stat in self.handle_dict(section,
-                                                       prefix):
+        data = dict(map(lambda x: (x[0], (x[1], x[2])),
+                    self.handle_dict(info, "redis")))
 
-                if self.selected_metrics:
-                    if key not in self.selected_metrics:
-                        pass
+        hits = int(data["keyspace_hits"][1])
+        misses = int(data["keyspace_misses"][1])
+        hit_rate = (hits / (hits + misses)) if hits > 0 else 0
+        data["hit_rate"] = ("computed", hit_rate)
 
-                metric = partial(event_fn,
-                                 host=self.host,
-                                 service=service)
-                try:
-                    metric(metric_f=float(stat))
-                except ValueError:  # We've got string metric
-                    metric(state=stat)
+        for key, (service, stat) in data.items():
+
+            if self.selected_metrics:
+                if key not in self.selected_metrics:
+                    pass
+
+            metric = partial(event_fn,
+                             host=self.host,
+                             service=service)
+            try:
+                metric(metric_f=float(stat))
+            except ValueError:  # We've got string metric
+                metric(state=stat)
 
         redis.close()
