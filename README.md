@@ -13,6 +13,13 @@ Add agent to configuration:
 module: oshino_redis.agent.RedisAgent
 ```
 
+Agent config
+============
+`host` - host of redis (default: localhost)
+`port` - port of redis (default: 6379)
+`password` - password of redis (default: no auth)
+`selected` - list of selected metrics (default: select all)
+
 Example config
 ==============
 ```yaml
