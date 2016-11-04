@@ -7,6 +7,10 @@ from functools import partial
 class RedisAgent(Agent):
 
     @property
+    def selected_metrics(self):
+        return self._data.get("selected", None)
+
+    @property
     def host(self):
         return self._data.get("host", "localhost")
 
@@ -21,21 +25,14 @@ class RedisAgent(Agent):
     async def create_connection(self):
         return await aioredis.create_redis((self.host, self.port))
 
-    def handle_dict(self, d, prefix, event_fn, logger):
+    def handle_dict(self, d, prefix):
         for key, stat in d.items():
             service = "{prefix}.{key}".format(prefix=prefix,
                                               key=key)
             if not isinstance(stat, dict):
-                metric = partial(event_fn,
-                                 host=self.host,
-                                 service=service)
-
-                try:
-                    metric(metric_f=float(stat))
-                except ValueError:  # We've got string metric
-                    metric(state=stat)
+                yield key, service, stat
             else:
-                self.handle_dict(stat, service, event_fn, logger)
+                self.handle_dict(stat, service)
 
     async def process(self, event_fn):
         logger = self.get_logger()
@@ -45,10 +42,21 @@ class RedisAgent(Agent):
         info = await redis.info()
         for name, section in info.items():
             logger.debug("Section: {0}, data: {1}".format(name, section))
-            self.handle_dict(section,
-                             "{prefix}{section}".format(prefix=self.prefix,
-                                                        section=name),
-                             event_fn,
-                             logger)
+            prefix = "{prefix}{section}".format(prefix=self.prefix,
+                                                section=name)
+            for key, service, stat in self.handle_dict(section,
+                                                       prefix):
+
+                if self.selected_metrics:
+                    if key not in self.selected_metrics:
+                        pass
+
+                metric = partial(event_fn,
+                                 host=self.host,
+                                 service=service)
+                try:
+                    metric(metric_f=float(stat))
+                except ValueError:  # We've got string metric
+                    metric(state=stat)
 
         redis.close()
