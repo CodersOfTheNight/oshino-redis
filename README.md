@@ -23,6 +23,10 @@ Agent config
 
 `selected` - list of selected metrics (default: select all)
 
+Output
+======
+For information on Redis metrics refer to: [Redis Info](https://redis.io/commands/INFO)
+
 
 Example config
 ==============
